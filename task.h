@@ -5,8 +5,8 @@
 struct Task {
   enum class Type {
     READ_FILE,
-    PARSE_FILE,
-    GENERATE_TITLE,
+    PARSE_BODY,
+    PARSE_TITLE,
     GENERATE_HTML,
   };
 
@@ -17,8 +17,8 @@ struct Task {
     std::string debug_string;
     switch (task_type) {
       case Type::READ_FILE: debug_string = "READ_FILE"; break;
-      case Type::PARSE_FILE: debug_string = "PARSE_FILE"; break;
-      case Type::GENERATE_TITLE: debug_string = "GENERATE_TITLE"; break;
+      case Type::PARSE_BODY: debug_string = "PARSE_BODY"; break;
+      case Type::PARSE_TITLE: debug_string = "PARSE_TITLE"; break;
       case Type::GENERATE_HTML: debug_string = "GENERATE_HTML"; break;
     }
     debug_string.append("  ");

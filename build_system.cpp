@@ -16,19 +16,29 @@ BuildSystem::BuildSystem() {
   Wow, you have progressed to the advanced section.
   Make sure to first check out <tutorial.rst>.
   )";
+  for (const auto& [filename, body] : filesystem_) {
+    todos_.insert(
+      {Task::Type::GENERATE_HTML, filename});
+  }
 }
+
+void BuildSystem::RebuildAll() {
+  for (const auto& [filename, body] : filesystem_) {
+    std::cout << GenerateHTML(filename);
+  }
+}
+
 
 std::string BuildSystem::Run(const Task& task) {
   switch (task.task_type) {
     case Task::Type::READ_FILE: {
       return ReadFile(task.input_file);
     }
-    case Task::Type::PARSE_FILE: { 
-      const auto [header, body] = ParseFile(task.input_file);
-      return header + body;
+    case Task::Type::PARSE_BODY: { 
+      return ParseBody(task.input_file);
     }
-    case Task::Type::GENERATE_TITLE: { 
-      return GetTitle(task.input_file);
+    case Task::Type::PARSE_TITLE: { 
+      return ParseTitle(task.input_file);
     }
     case Task::Type::GENERATE_HTML: { 
       return GenerateHTML(task.input_file);
@@ -38,42 +48,77 @@ std::string BuildSystem::Run(const Task& task) {
 
 
 std::string BuildSystem::ReadFile(const std::string& filename) {
-  task_graph_.PreFunc({Task::Type::READ_FILE, filename});
+  Task read_file = {Task::Type::READ_FILE, filename};
+  const auto cache_itr = task_cache_.find(read_file);
+  if (cache_itr != task_cache_.end()) {
+     return cache_itr->second;
+  }
+  task_graph_.PreFunc(read_file);
   const auto itr = filesystem_.find(filename);
   if (itr == filesystem_.end()) return "";
+  std::string file_contents = itr->second;
   task_graph_.PostFunc();
-  return itr->second;
+  task_cache_[read_file] = file_contents;
+  return file_contents;
+}
+
+std::string BuildSystem::ParseBody(
+  const std::string& filename) {
+  Task parse_body = {Task::Type::PARSE_BODY, filename}; 
+  const auto cache_itr = task_cache_.find(parse_body);  
+  if (cache_itr != task_cache_.end()) {
+    return cache_itr->second;
+  }
+  task_graph_.PreFunc(parse_body);
+  std::string body = ParseFile(filename).second;
+  task_graph_.PostFunc();
+  task_cache_[parse_body] = body;
+  return body;
+}
+
+std::string BuildSystem::ParseTitle(
+  const std::string& filename) {
+  Task parse_title = 
+    {Task::Type::PARSE_TITLE, filename}; 
+  const auto cache_itr = task_cache_.find(parse_title);  
+  if (cache_itr != task_cache_.end()) {
+    return cache_itr->second;
+  }
+  task_graph_.PreFunc(parse_title);
+  std::string title = ParseFile(filename).first;
+  task_graph_.PostFunc();
+  task_cache_[parse_title] = title;
+  return title;
+}
+
+std::string BuildSystem::GenerateHTML(const std::string& filename) {
+  Task generate_html = {Task::Type::GENERATE_HTML, filename}; 
+  const auto cache_itr = task_cache_.find(generate_html);    
+  if (cache_itr != task_cache_.end()) {
+    return cache_itr->second;
+  }
+  task_graph_.PreFunc(generate_html);
+  std::stringstream output_html;    
+  const std::string title = ParseTitle(filename);
+  const std::string body = ParseBody(filename);
+  output_html << "***** " << title << " *****" 
+            << std::endl << std::endl;
+  output_html << InsertLinks(body) << std::endl;
+  output_html << "-------------" << std::endl;
+  task_graph_.PostFunc();
+  task_cache_[generate_html] = output_html.str();
+  return output_html.str();
 }
 
 std::pair<std::string, std::string> BuildSystem::ParseFile(
   const std::string&filename) {
-  task_graph_.PreFunc({Task::Type::PARSE_FILE, filename});
   const std::string contents = ReadFile(filename);
   if (contents.empty()) return {"", ""};
 
   const auto split_pos = contents.find('\\');
   std::string title = contents.substr(0, split_pos);
   std::string body = contents.substr(split_pos + 1);
-  task_graph_.PostFunc();
   return {std::move(title), std::move(body)};
-}
-
-std::string BuildSystem::GenerateHTML(const std::string& filename) {
-  std::stringstream output_html;        
-  task_graph_.PreFunc({Task::Type::GENERATE_HTML, filename});
-  const auto [title, body] = ParseFile(filename);
-  output_html << "***** " << title << " *****" 
-            << std::endl << std::endl;
-  output_html << InsertLinks(body) << std::endl;
-  output_html << "-------------" << std::endl;
-  task_graph_.PostFunc();
-  return output_html.str();
-}
-
-std::string BuildSystem::GetTitle(const std::string& filename) {
-  task_graph_.PreFunc({Task::Type::GENERATE_TITLE, filename});
-  task_graph_.PostFunc();
-  return ParseFile(filename).first;
 }
 
 std::string BuildSystem::InsertLinks(const std::string& content) {
@@ -89,7 +134,7 @@ std::string BuildSystem::InsertLinks(const std::string& content) {
     while (content[++end] != '>'); 
     const std::string linked_file = 
       content.substr(i + 1, end - i - 1);
-    std::string linked_title = "*" + GetTitle(linked_file) + "*";
+    std::string linked_title = "*" + ParseTitle(linked_file) + "*";
     processed_content.append(linked_title);
     i = end; // i will be incremented when the iteration ends.
   }
