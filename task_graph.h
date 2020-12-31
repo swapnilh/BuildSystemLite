@@ -14,6 +14,8 @@ class TaskGraph {
     task_graph_.TopologicalView();
   }
 
+  const Graph* GetTaskGraph() const { return &task_graph_; }
+
   private:
   std::stack<Task> task_stack_;
   Graph task_graph_;

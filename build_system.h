@@ -41,6 +41,9 @@ class BuildSystem {
   // replaces it with the title of the link (e.g., *Tutoraial*).
   std::string InsertLinks(const std::string& content);
 
+  // Runs task and computes result!
+  std::string Run(const Task& task);
+
   TaskGraph task_graph_;
   // Task -> cached result.
   std::unordered_map<Task, std::string, TaskHash> task_cache_;

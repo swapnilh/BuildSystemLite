@@ -18,7 +18,7 @@ public:
     GetImmediateDependents(const Task& task) const;
 
   std::vector<Task>
-    GetDependentsRecursively(const Task& task) const;
+    GetDependentsRecursively(const std::vector<Task>& tasks) const;
 
   void TopologicalView() const;
 
