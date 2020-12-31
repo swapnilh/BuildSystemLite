@@ -14,6 +14,12 @@ public:
     backward_edges_[two].push_back(one);
   }
 
+  std::vector<Task>
+    GetImmediateDependents(const Task& task) const;
+
+  std::vector<Task>
+    GetDependentsRecursively(const Task& task) const;
+
   void TopologicalView() const;
 
 private:

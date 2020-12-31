@@ -28,24 +28,12 @@ void BuildSystem::RebuildAll() {
   }
 }
 
-
-std::string BuildSystem::Run(const Task& task) {
-  switch (task.task_type) {
-    case Task::Type::READ_FILE: {
-      return ReadFile(task.input_file);
-    }
-    case Task::Type::PARSE_BODY: { 
-      return ParseBody(task.input_file);
-    }
-    case Task::Type::PARSE_TITLE: { 
-      return ParseTitle(task.input_file);
-    }
-    case Task::Type::GENERATE_HTML: { 
-      return GenerateHTML(task.input_file);
-    }
-  }
+void BuildSystem::EditFile(
+  const std::string& filename, 
+  const std::string& new_contents) {
+    filesystem_[filename] = new_contents;
+    todos_.insert({Task::Type::READ_FILE, filename});
 }
-
 
 std::string BuildSystem::ReadFile(const std::string& filename) {
   Task read_file = {Task::Type::READ_FILE, filename};

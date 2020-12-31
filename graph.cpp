@@ -15,6 +15,26 @@ void Graph::TopologicalView() const {
   }
 }
 
+std::vector<Task>
+Graph::GetImmediateDependents(const Task& task)  const {
+  const auto itr = forward_edges_.find(task);
+  return itr->second;
+}
+
+std::vector<Task>
+Graph::GetDependentsRecursively(const Task& task) const {
+  std::stack<Task> dfs_stack;
+  std::unordered_set<Task, TaskHash> visited;
+  TopologicalViewHelper(task, dfs_stack, visited);
+  std::vector<Task> topological_list;
+  topological_list.reserve(dfs_stack.size());
+  while (!dfs_stack.empty()) {
+    topological_list.push_back(dfs_stack.top());
+    dfs_stack.pop();
+  }
+  return topological_list;
+}
+
 void Graph::TopologicalViewHelper(
   const Task& task,
   std::stack<Task>& dfs_stack, 

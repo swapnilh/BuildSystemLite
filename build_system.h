@@ -9,10 +9,12 @@ class BuildSystem {
   // Populates the `filesystem_`.
   BuildSystem();
 
-  // Returns output of task.
-  std::string Run(const Task& task);
-
   void RebuildAll();
+
+  // Updates the `filename` with `new_contents`.
+  void EditFile(
+    const std::string& filename, 
+    const std::string& new_contents);
 
   void PrintTaskGraph() const {
     task_graph_.PrintGraph();
