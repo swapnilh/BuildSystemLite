@@ -34,12 +34,12 @@ class BuildSystem {
   std::string GenerateHTML(const std::string& filename);
 
   // Returns <title, body> from file. 
-  std::pair<std::string, std::string> ParseFile(
+  std::pair<std::string, std::string> ParseFileHelper(
     const std::string&filename);
 
   // For every link in the input content (e.g., "<tutorial.rst>"),
   // replaces it with the title of the link (e.g., *Tutoraial*).
-  std::string InsertLinks(const std::string& content);
+  std::string InsertLinksHelper(const std::string& content);
 
   // Runs task and computes result!
   std::string Run(const Task& task);

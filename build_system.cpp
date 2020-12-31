@@ -42,7 +42,7 @@ void BuildSystem::RebuildAll() {
   }
 
   for (const auto& [filename, body] : filesystem_) {
-    std::cout << GenerateHTML(filename);
+    std::cout << Run({Task::Type::GENERATE_HTML, filename});
   }
 }
 
@@ -54,75 +54,38 @@ void BuildSystem::EditFile(
 }
 
 std::string BuildSystem::ReadFile(const std::string& filename) {
-  Task read_file = {Task::Type::READ_FILE, filename};
-  task_graph_.PreFunc(read_file);
-  const auto cache_itr = task_cache_.find(read_file);
-  if (cache_itr != task_cache_.end()) {
-    task_graph_.PostFunc();
-     return cache_itr->second;
-  }
   const auto itr = filesystem_.find(filename);
   if (itr == filesystem_.end()) return "";
-  std::string file_contents = itr->second;
-  task_cache_[read_file] = file_contents;
-  task_graph_.PostFunc();
-  return file_contents;
+  return itr->second;
 }
 
 std::string BuildSystem::ParseBody(
   const std::string& filename) {
-  Task parse_body = {Task::Type::PARSE_BODY, filename}; 
-  task_graph_.PreFunc(parse_body);
-  const auto cache_itr = task_cache_.find(parse_body);  
-  if (cache_itr != task_cache_.end()) {
-    task_graph_.PostFunc();
-    return cache_itr->second;
-  }
-  std::string body = ParseFile(filename).second;
-  task_graph_.PostFunc();
-  task_cache_[parse_body] = body;
-  return body;
+  return ParseFileHelper(filename).second;
 }
 
 std::string BuildSystem::ParseTitle(
   const std::string& filename) {
-  Task parse_title = 
-    {Task::Type::PARSE_TITLE, filename}; 
-    task_graph_.PreFunc(parse_title);
-    const auto cache_itr = task_cache_.find(parse_title);  
-  if (cache_itr != task_cache_.end()) {
-    task_graph_.PostFunc();
-    return cache_itr->second;
-  }
-  std::string title = ParseFile(filename).first;
-  task_graph_.PostFunc();
-  task_cache_[parse_title] = title;
-  return title;
+  return ParseFileHelper(filename).first;
 }
 
 std::string BuildSystem::GenerateHTML(const std::string& filename) {
-  Task generate_html = {Task::Type::GENERATE_HTML, filename}; 
-  task_graph_.PreFunc(generate_html);
-  const auto cache_itr = task_cache_.find(generate_html);    
-  if (cache_itr != task_cache_.end()) {
-    task_graph_.PostFunc();
-    return cache_itr->second;
-  }
   std::stringstream output_html;    
-  const std::string title = ParseTitle(filename);
-  const std::string body = ParseBody(filename);
+  const std::string title = Run(
+    {Task::Type::PARSE_TITLE, filename});
+  const std::string body = Run(
+    {Task::Type::PARSE_BODY, filename});
   output_html << "***** " << title << " *****" 
             << std::endl << std::endl;
-  output_html << InsertLinks(body) << std::endl;
+  output_html << InsertLinksHelper(body) << std::endl;
   output_html << "-------------" << std::endl;
-  task_graph_.PostFunc();
-  task_cache_[generate_html] = output_html.str();
   return output_html.str();
 }
 
-std::pair<std::string, std::string> BuildSystem::ParseFile(
+std::pair<std::string, std::string> BuildSystem::ParseFileHelper(
   const std::string&filename) {
-  const std::string contents = ReadFile(filename);
+  const std::string contents = Run(
+    {Task::Type::READ_FILE, filename});
   if (contents.empty()) return {"", ""};
 
   const auto split_pos = contents.find('\\');
@@ -131,7 +94,8 @@ std::pair<std::string, std::string> BuildSystem::ParseFile(
   return {std::move(title), std::move(body)};
 }
 
-std::string BuildSystem::InsertLinks(const std::string& content) {
+std::string BuildSystem::InsertLinksHelper(
+  const std::string& content) {
   std::string processed_content;
   processed_content.reserve(content.size());
   for (int i = 0; i < content.size(); ++i) {
@@ -144,7 +108,8 @@ std::string BuildSystem::InsertLinks(const std::string& content) {
     while (content[++end] != '>'); 
     const std::string linked_file = 
       content.substr(i + 1, end - i - 1);
-    std::string linked_title = "*" + ParseTitle(linked_file) + "*";
+    std::string linked_title = 
+      "*" + Run({Task::Type::PARSE_TITLE, linked_file}) + "*";
     processed_content.append(linked_title);
     i = end; // i will be incremented when the iteration ends.
   }
@@ -152,18 +117,34 @@ std::string BuildSystem::InsertLinks(const std::string& content) {
 }
 
 std::string BuildSystem::Run(const Task& task) {
+  task_graph_.PreFunc(task);
+  // Return cached output if available.
+  const auto cache_itr = task_cache_.find(task);    
+  if (cache_itr != task_cache_.end()) {
+    task_graph_.PostFunc();
+    return cache_itr->second;
+  }  
+  std::string output;
   switch (task.task_type) {
     case Task::Type::READ_FILE: {
-      return ReadFile(task.input_file);
+      output =  ReadFile(task.input_file);
+      break;
     }
     case Task::Type::PARSE_BODY: { 
-      return ParseBody(task.input_file);
+      output = ParseBody(task.input_file);
+      break;
     }
     case Task::Type::PARSE_TITLE: { 
-      return ParseTitle(task.input_file);
+      output = ParseTitle(task.input_file);
+      break;
     }
     case Task::Type::GENERATE_HTML: { 
-      return GenerateHTML(task.input_file);
+      output = GenerateHTML(task.input_file);
+      break;
     }
   }
+  // Cache output and return.
+  task_cache_[task] = output;
+  task_graph_.PostFunc();
+  return output;
 }

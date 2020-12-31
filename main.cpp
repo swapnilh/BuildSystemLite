@@ -47,7 +47,7 @@ Make sure to first check out <tutorial.rst>.)");
   R"(2. Very Advanced Topics\
 Wow, you have *successfully* progressed to the advanced section.
 Make sure to first check out <tutorial.rst>.)");
-  Print("Rebuilding after body edit: Only tutorial and index     recomputed");
+  Print("Rebuilding after body edit: Only tutorial and index recomputed");
   build.RebuildAll();
   // TestGraph();
   return 0;
